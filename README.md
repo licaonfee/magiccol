@@ -1,6 +1,6 @@
 # magiccol
 
-Magic columns for database/sql
+Dinamyc columns for database/sql. Magiccol allows to scan rows for a sql query, without known which columns it returns
 
 Example
 
@@ -29,10 +29,9 @@ func main() {
     m := magiccol.DefaultMapper()
     //Use mysql native Time type see
     //https://github.com/go-sql-driver/mysql#timetime-support
-    mt := reflect.TypeOf(mysql.NullTime{})
-    m.Type(mt, "DATE", "DATETIME", "TIMESTAMP")
+    m.Type(reflect.TypeOf(mysql.NullTime{}), "DATE", "DATETIME", "TIMESTAMP")
 
-    sc, err := magiccol.NewScanner(r, m)
+    sc, err := magiccol.NewScanner(magiccol.Options{Rows:r, Mapper: m})
     if err != nil {
         log.Fatal(err)
     }
