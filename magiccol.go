@@ -6,8 +6,10 @@ import (
 	"reflect"
 )
 
+//ErrNilRows a nil Rows interface is provided
 var ErrNilRows = errors.New("nil *sql.Rows as argument")
 
+//Scanner read data from an sql.Rows object into a map
 type Scanner struct {
 	o        Options
 	columns  []string
@@ -16,6 +18,7 @@ type Scanner struct {
 	err      error
 }
 
+//Options for Scanner
 type Options struct {
 	//Rows must be a valid sql.Rows object
 	Rows Rows
@@ -23,6 +26,7 @@ type Options struct {
 	Mapper Mapper
 }
 
+//Rows allow to mock sql.Rows object
 type Rows interface {
 	ColumnTypes() ([]*sql.ColumnType, error)
 	Columns() ([]string, error)
@@ -61,7 +65,7 @@ func NewScanner(o Options) (*Scanner, error) {
 }
 
 //Scan return true if there are rows in queue and false if
-//there is no more rows or an error occured. To distinguish
+//there is no more rows or an error occurred. To distinguish
 //between error or no more rows Err() method should be consulted
 func (s *Scanner) Scan() bool {
 	if !s.o.Rows.Next() {

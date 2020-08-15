@@ -24,6 +24,7 @@ var (
 	durationType = reflect.TypeOf(time.Duration(0))
 )
 
+//LookupMapper implements Mapper interface
 type LookupMapper struct {
 	m map[string]reflect.Type
 }
@@ -37,6 +38,7 @@ func (l LookupMapper) Get(typeName string, fallback reflect.Type) reflect.Type {
 	return t
 }
 
+//Type method allow to set custom types as scanneable types
 func (l *LookupMapper) Type(t reflect.Type, asType ...string) {
 	for _, x := range asType {
 		tp := x
@@ -44,6 +46,9 @@ func (l *LookupMapper) Type(t reflect.Type, asType ...string) {
 	}
 }
 
+//DefaultMapper provides a mapping for most common sql types
+//type list reference used is:
+//http://jakewheat.github.io/sql-overview/sql-2011-foundation-grammar.html#predefined-type
 func DefaultMapper() Mapper {
 	m := map[string]reflect.Type{
 		//Character types
