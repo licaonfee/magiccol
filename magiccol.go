@@ -18,15 +18,26 @@ type Scanner struct {
 
 type Options struct {
 	//Rows must be a valid sql.Rows object
-	Rows *sql.Rows
+	Rows Rows
 	//Mapper can be nil, if so DefaultMapper is used
 	Mapper Mapper
+}
+
+type Rows interface {
+	ColumnTypes() ([]*sql.ColumnType, error)
+	Columns() ([]string, error)
+	Next() bool
+	Err() error
+	Scan(...interface{}) error
 }
 
 //Inspect set scanner to read a column set
 func NewScanner(o Options) (*Scanner, error) {
 	if o.Rows == nil {
 		return nil, ErrNilRows
+	}
+	if o.Mapper == nil {
+		o.Mapper = DefaultMapper()
 	}
 	tp, err := o.Rows.ColumnTypes()
 	if err != nil {
