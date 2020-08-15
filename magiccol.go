@@ -35,7 +35,8 @@ type Rows interface {
 	Scan(...interface{}) error
 }
 
-//Inspect set scanner to read a column set
+//NewScanner create a new Scanner object, return an error if
+//a nil Rows interface is provided or any error is returned by its
 func NewScanner(o Options) (*Scanner, error) {
 	if o.Rows == nil {
 		return nil, ErrNilRows
