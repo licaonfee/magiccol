@@ -11,7 +11,7 @@ deps:
 
 utest:
 		$(GOTEST) -race -count 1 -timeout 30s  -coverprofile coverage.out  ./... 
-cover:
+cover: utest
 		$(GOTOOL) cover -func=coverage.out 
 
 clean:

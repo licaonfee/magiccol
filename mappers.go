@@ -5,13 +5,19 @@ import (
 	"time"
 )
 
-//Mapper translate sql types to golang types
-type Mapper interface {
-	//Get typeName should be sql type as is called in sql.ColumnType.DatabaseTypeName()
-	Get(typeName string, fallback reflect.Type) reflect.Type
-	//Type allow to set alias, extends or fix mapper behaviour
-	Type(t reflect.Type, asTypes ...string)
+//ColumnType is identical as defined in sql.ColumnType struct
+type ColumnType interface {
+	Name() string
+	DatabaseTypeName() string
+	ScanType() reflect.Type
+	Nullable() (nullable bool, ok bool)
+	DecimalSize() (precision int64, scale int64, ok bool)
+	Length() (length int64, ok bool)
 }
+
+//Matcher return a type and true if column definition match
+//on a negative match reflect.Type should be null but is not mandatory
+type Matcher func(ColumnType) (reflect.Type, bool)
 
 var (
 	stringType   = reflect.TypeOf("")
@@ -24,32 +30,59 @@ var (
 	durationType = reflect.TypeOf(time.Duration(0))
 )
 
-//LookupMapper implements Mapper interface
-type LookupMapper struct {
-	m map[string]reflect.Type
+//Mapper translate sql types to golang types
+type Mapper struct {
+	m     map[string]reflect.Type
+	match []Matcher
 }
 
 //Get do a map lookup if type is not found return a ScanType itself
-func (l LookupMapper) Get(typeName string, fallback reflect.Type) reflect.Type {
-	t, ok := l.m[typeName]
+func (l *Mapper) Get(col ColumnType) reflect.Type {
+	for _, m := range l.match {
+		t, ok := m(col)
+		if ok {
+			return t
+		}
+	}
+	t, ok := l.m[col.DatabaseTypeName()]
 	if !ok {
-		return fallback
+		return col.ScanType()
 	}
 	return t
 }
 
-//Type method allow to set custom types as scanneable types
-func (l *LookupMapper) Type(t reflect.Type, asType ...string) {
-	for _, x := range asType {
-		tp := x
-		l.m[tp] = t
+//Match method allow to set custom types as scanneable types
+//if m is nil then is a no-op
+func (l *Mapper) Match(m ...Matcher) {
+	for i := 0; i < len(m); i++ {
+		if m[i] != nil {
+			l.match = append(l.match, m[i])
+		}
+	}
+}
+
+func DatabaseTypeAs(databaseTypeName string, t reflect.Type) Matcher {
+	return func(col ColumnType) (reflect.Type, bool) {
+		if col.DatabaseTypeName() == databaseTypeName {
+			return t, true
+		}
+		return nil, false
+	}
+}
+
+func ColumnNameAs(columnName string, t reflect.Type) Matcher {
+	return func(col ColumnType) (reflect.Type, bool) {
+		if col.Name() == columnName {
+			return t, true
+		}
+		return nil, false
 	}
 }
 
 //DefaultMapper provides a mapping for most common sql types
 //type list reference used is:
 //http://jakewheat.github.io/sql-overview/sql-2011-foundation-grammar.html#predefined-type
-func DefaultMapper() Mapper {
+func DefaultMapper() *Mapper {
 	m := map[string]reflect.Type{
 		//Character types
 		"CHARACTER":                       stringType,
@@ -96,5 +129,5 @@ func DefaultMapper() Mapper {
 		//Interval type
 		"INTERVAL": durationType,
 	}
-	return &LookupMapper{m: m}
+	return &Mapper{m: m}
 }

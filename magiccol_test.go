@@ -2,9 +2,9 @@ package magiccol_test
 
 import (
 	"database/sql"
+	"database/sql/driver"
 	"errors"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -81,10 +81,11 @@ func TestScan(t *testing.T) {
 	rowError := errors.New("row error")
 	tests := []struct {
 		name    string
-		csvData string
+		rows    [][]driver.Value
 		columns []*sqlmock.Column
 		want    []map[string]interface{}
 		wantErr error
+		errorAt int
 	}{
 		{
 			name: "success",
@@ -92,30 +93,43 @@ func TestScan(t *testing.T) {
 				sqlmock.NewColumn("name").OfType("VARCHAR", ""),
 				sqlmock.NewColumn("age").OfType("INTEGER", int64(0)),
 			},
-			csvData: strings.Join([]string{`"jhon",35`, `"jeremy",29`}, "\n"),
+			rows: [][]driver.Value{
+				{"jhon", 35},
+				{"jeremy", 29},
+			},
 			want: []map[string]interface{}{
 				{"name": "jhon", "age": int64(35)},
 				{"name": "jeremy", "age": int64(29)},
 			},
 			wantErr: nil,
+			errorAt: -1,
 		},
 		{
 			name: "Rows error",
 			columns: []*sqlmock.Column{
 				sqlmock.NewColumn("name").OfType("VARCHAR", ""),
+				sqlmock.NewColumn("address").OfType("VARCHAR", ""),
 			},
-			csvData: `"jeimy"`,
+			rows: [][]driver.Value{
+				{"jeimy", "oak"},
+				{"jhon", "jhonson"},
+			},
 			want:    nil,
 			wantErr: rowError,
+			errorAt: 1,
 		},
 		{
 			name: "Scan error",
 			columns: []*sqlmock.Column{
-				sqlmock.NewColumn("name").OfType("INTEGER", int64(0)),
+				sqlmock.NewColumn("id").OfType("INTEGER", int64(0)),
+				sqlmock.NewColumn("moto").OfType("VARCHAR", ""),
 			},
-			csvData: `"jeimy"`,
-			want:    nil,
-			wantErr: errors.New(""),
+			rows: [][]driver.Value{
+				{11, "foo"},
+				{"invalidata", "bar"}},
+			want:    []map[string]interface{}{},
+			wantErr: errors.New("sss"),
+			errorAt: -1,
 		},
 	}
 	for _, tt := range tests {
@@ -125,10 +139,12 @@ func TestScan(t *testing.T) {
 				t.Error(err)
 			}
 			r := mock.NewRowsWithColumnDefinition(tt.columns...)
-			r.FromCSVString(tt.csvData)
+			for i := 0; i < len(tt.rows); i++ {
+				r.AddRow(tt.rows[i]...)
+			}
 			mock.ExpectQuery("SELECT").WillReturnRows(r)
-			if tt.wantErr != nil {
-				r.RowError(0, tt.wantErr)
+			if tt.wantErr != nil && tt.errorAt >= 0 {
+				r.RowError(tt.errorAt, tt.wantErr)
 			}
 			rows, _ := db.Query("SELECT")
 			m, err := magiccol.NewScanner(magiccol.Options{Rows: rows})
@@ -140,15 +156,13 @@ func TestScan(t *testing.T) {
 				got = append(got, m.Value())
 			}
 			if m.Err() != tt.wantErr {
-				e := errors.New("")
-				if !(m.Err() != nil && tt.wantErr != nil) {
-					t.Errorf("Scan() err = %v , want = %v", m.Err(), tt.wantErr)
-				}
-				if !errors.As(m.Err(), &e) || m.Err().Error() != tt.wantErr.Error() {
+				var e error
+				if !errors.As(m.Err(), &e) {
 					t.Errorf("Scan() err = %v , want = %v", m.Err(), tt.wantErr)
 				}
 			}
-			if m.Err() != nil {
+
+			if m.Err() != nil && tt.wantErr != nil {
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {

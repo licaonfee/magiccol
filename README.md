@@ -34,7 +34,13 @@ func main() {
     m := magiccol.DefaultMapper()
     //Use mysql native Time type see
     //https://github.com/go-sql-driver/mysql#timetime-support
-    m.Type(reflect.TypeOf(mysql.NullTime{}), "DATE", "DATETIME", "TIMESTAMP")
+    custom := reflect.TypeOf(mysql.NullTime{})
+    match := []magiccol.Matcher{
+        magiccol.DatabaseTypeAs("DATE", custom),
+        magiccol.DatabaseTypeAs("DATETIME", custom),
+        magiccol.DatabaseTypeAs("TIMESTAMP", custom),
+    }
+    m.Match(match)
 
     sc, err := magiccol.NewScanner(magiccol.Options{Rows:r, Mapper: m})
     if err != nil {
