@@ -23,7 +23,7 @@ type Options struct {
 	//Rows must be a valid sql.Rows object
 	Rows Rows
 	//Mapper can be nil, if so DefaultMapper is used
-	Mapper Mapper
+	Mapper *Mapper
 }
 
 //Rows allow to mock sql.Rows object
@@ -56,7 +56,7 @@ func NewScanner(o Options) (*Scanner, error) {
 	values := make([]reflect.Value, len(cols))
 	for i := 0; i < len(cols); i++ {
 		t := tp[i]
-		refType := o.Mapper.Get(t.DatabaseTypeName(), t.ScanType())
+		refType := o.Mapper.Get(t)
 		v := reflect.New(refType)
 		pointers[i] = v.Interface()
 		values[i] = v
