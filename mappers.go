@@ -90,6 +90,7 @@ func DefaultMapper() *Mapper {
 		"CHARACTER VARYING":               stringType,
 		"CHAR VARYING":                    stringType,
 		"VARCHAR":                         stringType,
+		"TEXT":                            stringType,
 		"CHARACTER LARGE OBJECT":          stringType,
 		"CHAR LARGE OBJECT":               stringType,
 		"CLOB":                            stringType,
