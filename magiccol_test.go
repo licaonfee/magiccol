@@ -77,6 +77,15 @@ func TestNewScanner(t *testing.T) {
 	}
 }
 
+func floatPtr(v float64) *float64 {
+	return &v
+}
+
+func stringPtr(v string) *string {
+	return &v
+}
+
+// nolint:gocognit
 func TestScan(t *testing.T) {
 	rowError := errors.New("row error")
 	tests := []struct {
@@ -129,6 +138,23 @@ func TestScan(t *testing.T) {
 				{"invalidata", "bar"}},
 			want:    []map[string]interface{}{},
 			wantErr: errors.New("sss"),
+			errorAt: -1,
+		},
+		{
+			name: "scan pointers",
+			columns: []*sqlmock.Column{
+				sqlmock.NewColumn("id").OfType("", new(float64)),
+				sqlmock.NewColumn("name").OfType("", new(string)),
+			},
+			rows: [][]driver.Value{
+				{floatPtr(69420), stringPtr("nice")},
+				{floatPtr(56), stringPtr("egg")},
+			},
+			want: []map[string]interface{}{
+				{"id": float64(69420), "name": "nice"},
+				{"id": float64(56), "name": "egg"},
+			},
+			wantErr: nil,
 			errorAt: -1,
 		},
 	}

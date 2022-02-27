@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-//ColumnType is identical as defined in sql.ColumnType struct
+// ColumnType is identical as defined in sql.ColumnType struct
 type ColumnType interface {
 	Name() string
 	DatabaseTypeName() string
@@ -15,8 +15,8 @@ type ColumnType interface {
 	Length() (length int64, ok bool)
 }
 
-//Matcher return a type and true if column definition match
-//on a negative match reflect.Type should be null but is not mandatory
+// Matcher return a type and true if column definition match
+// on a negative match reflect.Type should be null but is not mandatory
 type Matcher func(ColumnType) (reflect.Type, bool)
 
 var (
@@ -30,13 +30,13 @@ var (
 	durationType = reflect.TypeOf(time.Duration(0))
 )
 
-//Mapper translate sql types to golang types
+// Mapper translate sql types to golang types
 type Mapper struct {
 	m     map[string]reflect.Type
 	match []Matcher
 }
 
-//Get do a map lookup if type is not found return a ScanType itself
+// Get do a map lookup if type is not found return a ScanType itself
 func (l *Mapper) Get(col ColumnType) reflect.Type {
 	for _, m := range l.match {
 		t, ok := m(col)
@@ -51,8 +51,8 @@ func (l *Mapper) Get(col ColumnType) reflect.Type {
 	return t
 }
 
-//Match method allow to set custom types as scanneable types
-//if m is nil then is a no-op
+// Match method allow to set custom types as scanneable types
+// if m is nil then is a no-op
 func (l *Mapper) Match(m ...Matcher) {
 	for i := 0; i < len(m); i++ {
 		if m[i] != nil {
@@ -61,6 +61,7 @@ func (l *Mapper) Match(m ...Matcher) {
 	}
 }
 
+// DatabaseTypeAs match a column type
 func DatabaseTypeAs(databaseTypeName string, t reflect.Type) Matcher {
 	return func(col ColumnType) (reflect.Type, bool) {
 		if col.DatabaseTypeName() == databaseTypeName {
@@ -70,6 +71,7 @@ func DatabaseTypeAs(databaseTypeName string, t reflect.Type) Matcher {
 	}
 }
 
+// ColumnNameAs match a column name
 func ColumnNameAs(columnName string, t reflect.Type) Matcher {
 	return func(col ColumnType) (reflect.Type, bool) {
 		if col.Name() == columnName {
@@ -79,12 +81,12 @@ func ColumnNameAs(columnName string, t reflect.Type) Matcher {
 	}
 }
 
-//DefaultMapper provides a mapping for most common sql types
-//type list reference used is:
-//http://jakewheat.github.io/sql-overview/sql-2011-foundation-grammar.html#predefined-type
+// DefaultMapper provides a mapping for most common sql types
+// type list reference used is:
+// http://jakewheat.github.io/sql-overview/sql-2011-foundation-grammar.html#predefined-type
 func DefaultMapper() *Mapper {
 	m := map[string]reflect.Type{
-		//Character types
+		// Character types
 		"CHARACTER":                       stringType,
 		"CHAR":                            stringType,
 		"CHARACTER VARYING":               stringType,
@@ -103,13 +105,13 @@ func DefaultMapper() *Mapper {
 		"NATIONAL CHARACTER LARGE OBJECT": stringType,
 		"NCHAR LARGE OBJECT":              stringType,
 		"NCLOB":                           stringType,
-		//Binary types
+		// Binary types
 		"BINARY":              bytesType,
 		"BINARY VARYING":      bytesType,
 		"VARBINARY":           bytesType,
 		"BINARY LARGE OBJECT": bytesType,
 		"BLOB":                bytesType,
-		//exact numeric type
+		// exact numeric type
 		"NUMERIC":  floatType,
 		"DECIMAL":  floatType,
 		"DEC":      floatType,
@@ -117,17 +119,17 @@ func DefaultMapper() *Mapper {
 		"INTEGER":  intType,
 		"INT":      intType,
 		"BIGINT":   intType,
-		//approximate numeric type
+		// approximate numeric type
 		"FLOAT":            floatType,
 		"REAL":             complexType,
 		"DOUBLE PRECISION": floatType,
-		//boolean type
+		// boolean type
 		"BOOLEAN": boolType,
-		//datetime type
+		// datetime type
 		"DATE":      dateType,
 		"TIME":      dateType,
 		"TIMESTAMP": dateType,
-		//Interval type
+		// Interval type
 		"INTERVAL": durationType,
 	}
 	return &Mapper{m: m}

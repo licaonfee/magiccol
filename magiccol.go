@@ -6,10 +6,10 @@ import (
 	"reflect"
 )
 
-//ErrNilRows a nil Rows interface is provided
+// ErrNilRows a nil Rows interface is provided
 var ErrNilRows = errors.New("nil *sql.Rows as argument")
 
-//Scanner read data from an sql.Rows object into a map
+// Scanner read data from an sql.Rows object into a map
 type Scanner struct {
 	o        Options
 	columns  []string
@@ -18,15 +18,15 @@ type Scanner struct {
 	err      error
 }
 
-//Options for Scanner
+// Options for Scanner
 type Options struct {
-	//Rows must be a valid sql.Rows object
+	// Rows must be a valid sql.Rows object
 	Rows Rows
-	//Mapper can be nil, if so DefaultMapper is used
+	// Mapper can be nil, if so DefaultMapper is used
 	Mapper *Mapper
 }
 
-//Rows allow to mock sql.Rows object
+// Rows allow to mock sql.Rows object
 type Rows interface {
 	ColumnTypes() ([]*sql.ColumnType, error)
 	Columns() ([]string, error)
@@ -35,8 +35,8 @@ type Rows interface {
 	Scan(...interface{}) error
 }
 
-//NewScanner create a new Scanner object, return an error if
-//a nil Rows interface is provided or any error is returned by its
+// NewScanner create a new Scanner object, return an error if
+// a nil Rows interface is provided or any error is returned by its
 func NewScanner(o Options) (*Scanner, error) {
 	if o.Rows == nil {
 		return nil, ErrNilRows
@@ -65,9 +65,9 @@ func NewScanner(o Options) (*Scanner, error) {
 	return &Scanner{columns: cols, pointers: pointers, values: values, o: o}, nil
 }
 
-//Scan return true if there are rows in queue and false if
-//there is no more rows or an error occurred. To distinguish
-//between error or no more rows Err() method should be consulted
+// Scan return true if there are rows in queue and false if
+// there is no more rows or an error occurred. To distinguish
+// between error or no more rows Err() method should be consulted
 func (s *Scanner) Scan() bool {
 	if !s.o.Rows.Next() {
 		if s.o.Rows.Err() != nil {
@@ -82,25 +82,29 @@ func (s *Scanner) Scan() bool {
 	return true
 }
 
-//SetMap read values from current row and load it in a given map[string]interface{}
-//this allow to set default values, or reutilize same map in multiple iterations
-//SetMap does not clear map object and any preexistent key will be preserved
+// SetMap read values from current row and load it in a given map[string]interface{}
+// this allow to set default values, or reutilize same map in multiple iterations
+// SetMap does not clear map object and any preexistent key will be preserved
 func (s *Scanner) SetMap(value map[string]interface{}) {
 	for i := 0; i < len(s.columns); i++ {
-		value[s.columns[i]] = reflect.Indirect(s.values[i]).Interface()
+		v := reflect.Indirect(s.values[i])
+		for v.Kind() == reflect.Ptr && !v.IsNil() {
+			v = reflect.Indirect(v)
+		}
+		value[s.columns[i]] = v.Interface()
 	}
 }
 
-//Value returns a new map object with all values from current row
-//successives calls to Value without call Scan returns always same values
-//in a new allocated map. Call Value() before Scan return all values as Zero
+// Value returns a new map object with all values from current row
+// successives calls to Value without call Scan returns always same values
+// in a new allocated map. Call Value() before Scan return all values as Zero
 func (s *Scanner) Value() map[string]interface{} {
 	value := make(map[string]interface{}, len(s.columns))
 	s.SetMap(value)
 	return value
 }
 
-//Err return last error in Scanner
+// Err return last error in Scanner
 func (s *Scanner) Err() error {
 	return s.err
 }
