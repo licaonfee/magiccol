@@ -25,7 +25,7 @@ func (f *mockRows) Columns() ([]string, error) { return f.columns, nil }
 
 func (f *mockRows) Err() error { return nil }
 
-func (f *mockRows) Scan(args ...interface{}) error { return nil }
+func (f *mockRows) Scan(args ...any) error { return nil }
 
 func (f *mockRows) Next() bool { return false }
 
@@ -70,7 +70,7 @@ func TestNewScanner(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := magiccol.NewScanner(tt.opts)
-			if err != tt.wantErr || !errors.As(err, &tt.wantErr) {
+			if err != tt.wantErr || !errors.Is(err, tt.wantErr) {
 				t.Errorf("NewScanner() err = %v , wantErr = %v", err, tt.wantErr)
 			}
 		})
@@ -92,7 +92,7 @@ func TestScan(t *testing.T) {
 		name    string
 		rows    [][]driver.Value
 		columns []*sqlmock.Column
-		want    []map[string]interface{}
+		want    []map[string]any
 		wantErr error
 		errorAt int
 	}{
@@ -106,7 +106,7 @@ func TestScan(t *testing.T) {
 				{"jhon", 35},
 				{"jeremy", 29},
 			},
-			want: []map[string]interface{}{
+			want: []map[string]any{
 				{"name": "jhon", "age": int64(35)},
 				{"name": "jeremy", "age": int64(29)},
 			},
@@ -136,8 +136,8 @@ func TestScan(t *testing.T) {
 			rows: [][]driver.Value{
 				{11, "foo"},
 				{"invalidata", "bar"}},
-			want:    []map[string]interface{}{},
-			wantErr: errors.New("sss"),
+			want:    []map[string]any{},
+			wantErr: magiccol.ErrInvalidDataType,
 			errorAt: -1,
 		},
 		{
@@ -150,7 +150,7 @@ func TestScan(t *testing.T) {
 				{floatPtr(69420), stringPtr("nice")},
 				{floatPtr(56), stringPtr("egg")},
 			},
-			want: []map[string]interface{}{
+			want: []map[string]any{
 				{"id": float64(69420), "name": "nice"},
 				{"id": float64(56), "name": "egg"},
 			},
@@ -177,15 +177,13 @@ func TestScan(t *testing.T) {
 			if err != nil {
 				t.Errorf("NewScanner() err = %v", err)
 			}
-			got := make([]map[string]interface{}, 0)
+			got := make([]map[string]any, 0)
 			for m.Scan() {
 				got = append(got, m.Value())
 			}
-			if m.Err() != tt.wantErr {
-				var e error
-				if !errors.As(m.Err(), &e) {
-					t.Errorf("Scan() err = %v , want = %v", m.Err(), tt.wantErr)
-				}
+
+			if !errors.Is(m.Err(), tt.wantErr) {
+				t.Errorf("Scan() err = %v , want = %v", m.Err(), tt.wantErr)
 			}
 
 			if m.Err() != nil && tt.wantErr != nil {

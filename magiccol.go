@@ -1,19 +1,24 @@
+// Package magiccol allows to scan sql rows into an arbitrary map
 package magiccol
 
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"reflect"
 )
 
 // ErrNilRows a nil Rows interface is provided
 var ErrNilRows = errors.New("nil *sql.Rows as argument")
 
+// ErrInvalidDataType columnd declared with a type incompatible with the actual value
+var ErrInvalidDataType = errors.New("data type not valid for column")
+
 // Scanner read data from an sql.Rows object into a map
 type Scanner struct {
 	o        Options
 	columns  []string
-	pointers []interface{}
+	pointers []any
 	values   []reflect.Value
 	err      error
 }
@@ -32,7 +37,7 @@ type Rows interface {
 	Columns() ([]string, error)
 	Next() bool
 	Err() error
-	Scan(...interface{}) error
+	Scan(...any) error
 }
 
 // NewScanner create a new Scanner object, return an error if
@@ -52,7 +57,7 @@ func NewScanner(o Options) (*Scanner, error) {
 	if err != nil {
 		return nil, err
 	}
-	pointers := make([]interface{}, len(cols))
+	pointers := make([]any, len(cols))
 	values := make([]reflect.Value, len(cols))
 	for i := 0; i < len(cols); i++ {
 		t := tp[i]
@@ -76,16 +81,16 @@ func (s *Scanner) Scan() bool {
 		return false
 	}
 	if err := s.o.Rows.Scan(s.pointers...); err != nil {
-		s.err = err
+		s.err = fmt.Errorf("%w %s", ErrInvalidDataType, err)
 		return false
 	}
 	return true
 }
 
-// SetMap read values from current row and load it in a given map[string]interface{}
+// SetMap read values from current row and load it in a given map[string]any
 // this allow to set default values, or reutilize same map in multiple iterations
 // SetMap does not clear map object and any preexistent key will be preserved
-func (s *Scanner) SetMap(value map[string]interface{}) {
+func (s *Scanner) SetMap(value map[string]any) {
 	for i := 0; i < len(s.columns); i++ {
 		v := reflect.Indirect(s.values[i])
 		for v.Kind() == reflect.Ptr && !v.IsNil() {
@@ -98,8 +103,8 @@ func (s *Scanner) SetMap(value map[string]interface{}) {
 // Value returns a new map object with all values from current row
 // successives calls to Value without call Scan returns always same values
 // in a new allocated map. Call Value() before Scan return all values as Zero
-func (s *Scanner) Value() map[string]interface{} {
-	value := make(map[string]interface{}, len(s.columns))
+func (s *Scanner) Value() map[string]any {
+	value := make(map[string]any, len(s.columns))
 	s.SetMap(value)
 	return value
 }
